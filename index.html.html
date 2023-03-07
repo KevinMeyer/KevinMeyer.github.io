@@ -1,0 +1,148 @@
+<html>
+	<div id="text-formatter">
+		<body>
+			Delimiter<br>
+			<input type="radio" name="delim-radios" value="NEWLINE" checked>New Line 
+			<input type="radio" name="delim-radios" value=" "> Space
+			<input type="radio" name="delim-radios" value=",">Comma
+			<input type="radio" name="delim-radios" value="|">Pipe
+			<input type="radio" name="delim-radios" value="OTHER"> Other
+			<input type="text" size="5" id="other-delim"><br>
+			Format Options<br>
+			<input type="checkbox" id="new-line-vals" checked>New line each value?
+			<input type="checkbox" id="trim" checked>Trim last character?
+			<br>
+			<input type="radio" name="format-radios" value="SQL" checked> SQL IN Array
+			<input type="text" size="10" id="column-name" placeholder="Column">
+			<input type="radio" name="format-radios" value="JAVA" title="String type"> Java
+			<input type="radio" name="format-radios"  value="JS" title="String type"> JavaScript
+			<input type="radio" name="format-radios" value="OTHER" > Other
+			<input type="text" size="10" id="other-front-format" placeholder="Front">
+			<input type="text" size="10" id="other-front-wrap-format" placeholder="Front wrap">
+			<input type="text" size="10" id="other-end-wrap-format" placeholder="End wrap">
+			<input type="text" size="10" id="other-end-format" placeholder="End">
+			<br>
+			INPUT
+			<br>
+			<textarea rows="15" cols="25" id="text-to-format"></textarea> 
+			<button id="format-data" onclick="formatText();">Format</button>
+			<br>
+			OUTPUT(copied to clipboard)
+			<br>
+			<textarea rows="15" cols="25" id="formatted-text"></textarea> 
+			<button id="format-data" onclick="clearText();">Clear</button>
+			<br>
+			<br>
+			Rows <input type="text" size="4" id="rows" value="15"> 
+			Columns <input type="text" size="4" id="cols" value="25">
+			<button id="format-data" onclick="resize();">Resize</button>
+			<h5>Version:1.2.2</h5>
+		</body>
+	</div>
+</html>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+	/*
+	* Created by Kevin Meyer  	
+	*/
+	function resize(){
+		$("#text-formatter textarea").attr('cols', $("#cols").val());
+		$("#text-formatter textarea").attr('rows', $("#rows").val());
+	}
+	function clearText(){
+		$("#formatted-text").val("");
+		$("#text-to-format").val("");
+	}
+	function formatText(){
+		// Number of items in input field
+		//Get selected values
+		var delimiter = $('input[name=delim-radios]:checked').val();		
+		var format = $('input[name=format-radios]:checked').val();
+		var trim = $('#trim').is(':checked');
+		var column = $("#column-name").val();
+		//Initialize formatting strings
+		var begin,frontWrap,newLine,endWrap,end;
+		//Check if we are breaking up by new line. Leaves as empty string if we are not
+		if($('#new-line-vals').is(':checked')){
+			newLine = "\n";
+		}else{
+			newLine = "";
+		}
+		//Check and set values based on user selected format, assumes strings for Java/JS
+		switch (format){
+			case "SQL":
+				begin = "IN" + newLine + "(";
+				frontWrap = "'";
+				endWrap = "',";
+				end = ")"
+				break;
+			case "JAVA":
+				begin = "{";
+				frontWrap = '"';
+				endWrap = '",';
+				end = "};";
+				break;
+			case "JS":
+				begin = "[";
+				frontWrap = '"';
+				endWrap = '",';
+				end = "];";
+				break;
+			case "OTHER":
+				begin = $("#other-front-format").val();
+				frontWrap = $("#other-front-wrap-format").val();
+				endWrap = $("#other-end-wrap-format").val();
+				end = $("#other-end-format").val();
+				break;		
+			default:
+				alert("DON'T TOUCH MY CODE");
+				return;
+		}
+		//Special cases for OTHER and NEWLINE delimiter from text to format
+		if(delimiter == "OTHER"){
+			delimiter = $("#other-delim").val();
+		}else if(delimiter == "NEWLINE"){
+			delimiter = "\n";
+		}
+		//Split on delimiter, remove empty strings
+		var values = $('#text-to-format').val().split(delimiter).filter(Boolean);
+		var length = values.length;
+
+		//Initialize out text as Begining string.
+		var formattedText = begin;
+		
+		if(format == 'SQL' && column != false){
+			formattedText = column + ' ' + formattedText;
+		}
+		
+		if(format === 'SQL' && length > 999 && $("#column-name").val() === ""){
+			alert("Please specify a column value to continue");
+			return;
+		}
+
+		var val = "";
+		for(var i=0; i < length; i++){
+			val = values[i];
+			if(val !== ""){			
+				formattedText = formattedText + frontWrap + val + endWrap;
+			}
+			//Special case for IN SQL array
+			if(i != 0 && format == 'SQL' && column != false  && i % 999 == 0){
+				formattedText = formattedText.substring(0,formattedText.length-1);
+				formattedText = formattedText + end + newLine + 'OR '+ column + ' IN (';
+			}
+			//Trim if we are at the end and user selected to trim
+			if(i == values.length-1 && trim){
+				formattedText = formattedText.substring(0,formattedText.length-1);
+			}else{
+				formattedText = formattedText + newLine;
+			}
+			
+		}
+		//Add the end text and set to output textarea
+		$("#formatted-text").val(formattedText + end);
+		//Copy it to clipbord.
+		$("#formatted-text").select();
+		document.execCommand("copy");
+	}
+</script>
